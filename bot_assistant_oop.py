@@ -1,9 +1,93 @@
 from collections import UserDict
 from datetime import datetime, timedelta
 import pickle
+from abc import ABC, abstractmethod
 
 
+class UserView(ABC):
 
+    @abstractmethod
+    def exit(self):
+        pass
+
+    @abstractmethod
+    def greet(self):
+        pass
+
+    @abstractmethod
+    def show_contacts(self, contacts):
+        pass
+
+    @abstractmethod
+    def show_message(self, message):
+        pass
+
+    @abstractmethod
+    def show_phone(self, phone):
+        pass
+
+    @abstractmethod
+    def show_birthday(self, birthday):
+        pass
+
+    @abstractmethod
+    def birthdays(self, upcoming_birthdays):
+        pass
+
+    @abstractmethod
+    def help(self):
+        pass
+
+    @abstractmethod
+    def invalid_command(self, command):
+        pass
+
+class ConsoleView(UserView):
+    def exit(self):
+        print("Goodbye!")
+
+    def greet(self):
+        print("How can I help you?")
+
+    def help(self):
+        print("=" * 40)
+        print("🤖 COMMAND GUIDE")
+        print("=" * 40)
+
+        commands = {
+            "hello": "Say hello",
+            "add": "Add a new contact",
+            "change": "Change a contact",
+            "phone": "Show phone numbers",
+            "all": "Show all contacts",
+            "add-birthday": "Add a birthday",
+            "show-birthday": "Show a birthday",
+            "birthdays": "Show upcoming birthdays",
+            "exit / close": "Exit the program"
+        }
+
+        for cmd, desc in commands.items():
+            print(f"{cmd:<15} - {desc}")
+
+        print("=" * 40)
+
+    def show_message(self, message):
+        print(message)
+
+    def show_contacts(self, contacts):
+        print(contacts)
+
+    def show_phone(self, phone):
+        print(phone)
+
+    def show_birthday(self, birthday):
+        print(birthday)
+
+    def birthdays(self, upcoming_birthdays):
+        print(upcoming_birthdays)
+
+    def invalid_command(self):
+        print("Invalid command.")
 
 class Field:
     def __init__(self, value):
@@ -115,11 +199,11 @@ def input_error(func):
         except IndexError:
             return "Not enough information"
         except ValueError as e:
-            return str(e)
+            return "Provide old and new numbers."
         except KeyError:
-            return "Contact not found"
+            return "Contact not found."
         except AttributeError:
-            return "Contact not found"
+            return "Contact not found."
     return inner
 
 #commands handlers
@@ -150,6 +234,15 @@ def show_contact(args, book):
     return "; ".join(phone.value for phone in record.phones)
 
 @input_error
+def remove_contact(args, book):
+    name = args[0]
+    record = book.find(name)
+    if record is None:
+        return "Contact not found."
+    book.delete(name)
+    return "Contact removed."
+
+@input_error
 def show_all_contacts(args, book):
     return str(book)
 
@@ -158,7 +251,7 @@ def show_birthday(args, book):
     name = args[0]
     record = book.find(name)
     if not record.birthday:
-        return "Birthday not set"
+        return "Birthday not set."
     else:
         return record.birthday.value
 
@@ -169,10 +262,10 @@ def add_birthday(args, book):
     record = book.find(name)
 
     if record.birthday:
-        return "Birthday is already set"
+        return "Birthday is already set."
 
     record.add_birthday(birthday)
-    return "Birthday added"
+    return "Birthday added."
 
 @input_error
 def birthdays(args, book):
@@ -201,6 +294,7 @@ def load_data(filename="addressbook.pkl"):
 def main():
     book = AddressBook()
     book = load_data("addressbook.pkl")
+    view = ConsoleView()
     print("Welcome to the OOP assistant")
     print("Type 'help' and I show all the commands I understand")
 
@@ -213,57 +307,49 @@ def main():
 
 
         if command in ["close", "exit"]:
-            print("Goodbye!")
+            view.exit()
             break
 
         elif command == "hello":
-            print("How can I help you?")
+            view.greet()
 
         elif command == "add":
-            print(add_contact(args, book))
+            result = add_contact(args, book)
+            view.show_message(result)
 
         elif command == "change":
-            print(change_contact(args, book))
+            result = change_contact(args, book)
+            view.show_message(result)
 
         elif command == "phone":
-            print(show_contact(args, book))
+            result = show_contact(args, book)
+            view.show_phone(result)
+
+        elif command in ["remove", "delete"]:
+            result = remove_contact(args, book)
+            view.show_message(result)
 
         elif command == "all":
-            print(show_all_contacts(args, book))
+            result = show_all_contacts(args, book)
+            view.show_contacts(result)
 
         elif command == "add-birthday":
-            print(add_birthday(args, book))
+            result = add_birthday(args, book)
+            view.show_birthday(result)
 
         elif command == "show-birthday":
-            print(show_birthday(args, book))
+            result = show_birthday(args, book)
+            view.show_birthday(result)
 
         elif command == "birthdays":
-            print(birthdays(args, book))
+            result = birthdays(args, book)
+            view.birthdays(result)
 
         elif command == "help":
-            print("=" * 40)
-            print("🤖 COMMAND GUIDE")
-            print("=" * 40)
-
-            commands = {
-                "hello": "Say hello",
-                "add": "Add a new contact",
-                "change": "Change a contact",
-                "phone": "Show phone numbers",
-                "all": "Show all contacts",
-                "add-birthday": "Add a birthday",
-                "show-birthday": "Show a birthday",
-                "birthdays": "Show upcoming birthdays",
-                "exit / close": "Exit the program"
-            }
-
-            for cmd, desc in commands.items():
-                print(f"{cmd:<15} - {desc}")
-
-            print("=" * 40)
+            view.help()
 
         else:
-            print("Invalid command.")
+            view.invalid_command()
 
     save_data(book)
 
